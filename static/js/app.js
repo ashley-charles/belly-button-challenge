@@ -1,83 +1,121 @@
-// Build the metadata panel
-function buildMetadata(sample) {
-  d3.json("https://static.bc-edx.com/data/dl-1-2/m14/lms/starter/samples.json").then((data) => {
+// URL for the JSON data
+const url = "https://static.bc-edx.com/data/dl-1-2/m14/lms/starter/samples.json";
 
-    // get the metadata field
-
-
-    // Filter the metadata for the object with the desired sample number
-
-
-    // Use d3 to select the panel with id of `#sample-metadata`
-
-
-    // Use `.html("") to clear any existing metadata
-
-
-    // Inside a loop, you will need to use d3 to append new
-    // tags for each key-value in the filtered metadata.
-
-  });
-}
-
-// function to build both charts
-function buildCharts(sample) {
-  d3.json("https://static.bc-edx.com/data/dl-1-2/m14/lms/starter/samples.json").then((data) => {
-
-    // Get the samples field
-
-
-    // Filter the samples for the object with the desired sample number
-
-
-    // Get the otu_ids, otu_labels, and sample_values
-
-
-    // Build a Bubble Chart
-
-
-    // Render the Bubble Chart
-
-
-    // For the Bar Chart, map the otu_ids to a list of strings for your yticks
-
-
-    // Build a Bar Chart
-    // Don't forget to slice and reverse the input data appropriately
-
-
-    // Render the Bar Chart
-
-  });
-}
-
-// Function to run on page load
+// Initialize the dashboard
 function init() {
-  d3.json("https://static.bc-edx.com/data/dl-1-2/m14/lms/starter/samples.json").then((data) => {
+    // Fetch the JSON data
+    d3.json(url).then(data => {
+        // Get the list of sample names
+        const sampleNames = data.names;
 
-    // Get the names field
+        // Select the dropdown menu
+        const dropdown = d3.select("#selDataset");
 
+        // Populate the dropdown with sample names
+        sampleNames.forEach(sample => {
+            dropdown.append("option").text(sample).property("value", sample);
+        });
 
-    // Use d3 to select the dropdown with id of `#selDataset`
+        // Display the data for the first sample in the list
+        const firstSample = sampleNames[0];
+        updateMetadata(firstSample); // Populate the demographic info
+        buildCharts(firstSample);    // Build the charts
+    }).catch(error => {
+        console.error("Error initializing the dashboard:", error);
+    });
+}
 
+// Function to update metadata
+function updateMetadata(sample) {
+    // Fetch the JSON data
+    d3.json(url).then(data => {
+        // Get the metadata field
+        const metadata = data.metadata;
 
-    // Use the list of sample names to populate the select options
-    // Hint: Inside a loop, you will need to use d3 to append a new
-    // option for each sample name.
+        // Filter the metadata for the object with the desired sample number
+        const filteredMetadata = metadata.filter(obj => obj.id == sample)[0];
 
+        // Use d3 to select the panel with id of `#sample-metadata`
+        const metadataPanel = d3.select("#sample-metadata");
 
-    // Get the first sample from the list
+        // Use `.html("")` to clear any existing metadata
+        metadataPanel.html("");
 
+        // Inside a loop, append new tags for each key-value pair
+        Object.entries(filteredMetadata).forEach(([key, value]) => {
+            metadataPanel.append("h6").text(`${key.toUpperCase()}: ${value}`);
+        });
+    }).catch(error => {
+        console.error("Error fetching or processing metadata:", error);
+    });
+}
 
-    // Build charts and metadata panel with the first sample
+// Function to build charts
+function buildCharts(sample) {
+    // Fetch the JSON data
+    d3.json(url).then(data => {
+        // Get the samples field
+        const samples = data.samples;
 
-  });
+        // Filter the samples for the object with the desired sample number
+        const filteredSample = samples.filter(obj => obj.id == sample)[0];
+
+        // Get the otu_ids, otu_labels, and sample_values
+        const otuIds = filteredSample.otu_ids;
+        const otuLabels = filteredSample.otu_labels;
+        const sampleValues = filteredSample.sample_values;
+
+        // Build a Bubble Chart
+        const bubbleTrace = {
+            x: otuIds,
+            y: sampleValues,
+            text: otuLabels,
+            mode: 'markers',
+            marker: {
+                size: sampleValues,
+                color: otuIds,
+                colorscale: 'Earth'
+            }
+        };
+
+        const bubbleLayout = {
+            title: "Bacteria Cultures per Sample",
+            xaxis: { title: "OTU ID" },
+            hovermode: "closest"
+        };
+
+        // Render the Bubble Chart
+        Plotly.newPlot("bubble", [bubbleTrace], bubbleLayout);
+
+        // For the Bar Chart, map the otu_ids to a list of strings for your yticks
+        const yticks = otuIds.slice(0, 10).map(id => `OTU ${id}`).reverse();
+
+        // Build a Bar Chart
+        const barTrace = {
+            x: sampleValues.slice(0, 10).reverse(),
+            y: yticks,
+            text: otuLabels.slice(0, 10).reverse(),
+            type: "bar",
+            orientation: "h"
+        };
+
+        const barLayout = {
+            title: "Top 10 Bacteria Cultures Found",
+            margin: { t: 30, l: 150 }
+        };
+
+        // Render the Bar Chart
+        Plotly.newPlot("bar", [barTrace], barLayout);
+    }).catch(error => {
+        console.error("Error fetching or processing data for charts:", error);
+    });
 }
 
 // Function for event listener
 function optionChanged(newSample) {
-  // Build charts and metadata panel each time a new sample is selected
-
+    // Update metadata and charts when a new sample is selected
+    updateMetadata(newSample);
+    buildCharts(newSample);
 }
 
 // Initialize the dashboard
